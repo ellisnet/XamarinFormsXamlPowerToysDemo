@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XamarinFormsXamlPowerToysDemo.View.PersonEditorView"
+             xmlns:controls="clr-namespace:XamarinFormsXamlPowerToysDemo.Controls;assembly=XamarinFormsXamlPowerToysDemo"
+             xmlns:view="clr-namespace:XamarinFormsXamlPowerToysDemo.View;assembly=XamarinFormsXamlPowerToysDemo"
+             xmlns:converters="clr-namespace:XamarinFormsXamlPowerToysDemo.Converters;assembly=XamarinFormsXamlPowerToysDemo"
+             Title="Person Editor">
+
+  <ContentPage.BindingContext>
+    <view:PersonEditorViewModel />
+  </ContentPage.BindingContext>
+
+  <ContentPage.Resources>
+    <ResourceDictionary>
+      <converters:SexEnumConverter x:Key="SexEnumConverter"/>
+      <Color x:Key="labelColor">#696969</Color>
+      <Style TargetType="Label">
+        <Setter Property="FontSize" Value="Small" />
+        <Setter Property="TextColor" Value="{StaticResource labelColor}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+      </Style>
+      <Style TargetType="Entry">
+        <Setter Property="VerticalOptions" Value="Center" />
+      </Style>
+      <Style TargetType="Editor">
+        <Setter Property="VerticalOptions" Value="Center" />
+      </Style>
+      <Style TargetType="Image">
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="HeightRequest" Value="16" />
+        <Setter Property="WidthRequest" Value="16" />
+      </Style>
+      <Style TargetType="DatePicker">
+        <Setter Property="VerticalOptions" Value="Center" />
+      </Style>
+      <Style TargetType="Switch">
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="HorizontalOptions" Value="Start"/>
+      </Style>
+      <Style TargetType="Slider">
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="HorizontalOptions" Value="FillAndExpand" />
+      </Style>
+      <Style TargetType="{x:Type controls:BindablePicker}">
+        <Setter Property="VerticalOptions" Value="Center" />
+      </Style>
+    </ResourceDictionary>
+  </ContentPage.Resources>
+  <ContentPage.Padding>
+    <OnPlatform x:TypeArguments="Thickness" iOS="0, 20, 0, 0" />
+  </ContentPage.Padding>
+
+
+
+</ContentPage>
