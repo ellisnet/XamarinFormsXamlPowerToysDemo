@@ -1,19 +1,25 @@
-﻿namespace XamarinFormsXamlPowerToysDemo.Controls {
+namespace XamarinFormsXamlPowerToysDemo.Controls {
     using System;
     using System.Collections;
+    using System.Collections.Specialized;
     using System.Reflection;
     using Xamarin.Forms;
 
-    /// <summary>
-    /// Most of the credit for this control goes these two blog posts:  
-    /// https://forums.xamarin.com/discussion/63565/xamarin-forms-picker-data-binding-using-mvvm
-    /// https://forums.xamarin.com/discussion/30801/xamarin-forms-bindable-picker
-    /// 
-    /// I added in SelectedValue & SelectedValuePath and internal control logic
-    /// </summary>
     public class BindablePicker : Picker {
 
         Boolean _disableNestedCalls;
+
+        public static readonly BindableProperty ItemsSourceProperty =
+            BindableProperty.Create("ItemsSource", typeof(IEnumerable), typeof(BindablePicker),
+                null, propertyChanged: OnItemsSourceChanged);
+
+        public static readonly BindableProperty SelectedItemProperty =
+            BindableProperty.Create("SelectedItem", typeof(Object), typeof(BindablePicker),
+                null, BindingMode.TwoWay, propertyChanged: OnSelectedItemChanged);
+
+        public static readonly BindableProperty SelectedValueProperty =
+            BindableProperty.Create("SelectedValue", typeof(Object), typeof(BindablePicker),
+                null, BindingMode.TwoWay, propertyChanged: OnSelectedValueChanged);
 
         public String DisplayMemberPath { get; set; }
 
@@ -48,17 +54,49 @@
 
         public event EventHandler<SelectedItemChangedEventArgs> ItemSelected;
 
-        public static readonly BindableProperty ItemsSourceProperty =
-            BindableProperty.Create("ItemsSource", typeof(IEnumerable), typeof(BindablePicker),
-                null, propertyChanged: OnItemsSourceChanged);
+        void InstanceOnItemsSourceChanged(Object oldValue, Object newValue) {
+            _disableNestedCalls = true;
+            this.Items.Clear();
 
-        public static readonly BindableProperty SelectedItemProperty =
-            BindableProperty.Create("SelectedItem", typeof(Object), typeof(BindablePicker),
-                null, BindingMode.TwoWay, propertyChanged: OnSelectedItemChanged);
+            var oldCollectionINotifyCollectionChanged = oldValue as INotifyCollectionChanged;
+            if (oldCollectionINotifyCollectionChanged != null) {
+                oldCollectionINotifyCollectionChanged.CollectionChanged -= ItemsSource_CollectionChanged;
+            }
 
-        public static readonly BindableProperty SelectedValueProperty =
-            BindableProperty.Create("SelectedValue", typeof(Object), typeof(BindablePicker),
-                null, BindingMode.TwoWay, propertyChanged: OnSelectedValueChanged);
+            var newCollectionINotifyCollectionChanged = newValue as INotifyCollectionChanged;
+            if (newCollectionINotifyCollectionChanged != null) {
+                newCollectionINotifyCollectionChanged.CollectionChanged += ItemsSource_CollectionChanged;
+            }
+
+            if (!Equals(newValue, null)) {
+                var hasDisplayMemberPath = !String.IsNullOrWhiteSpace(this.DisplayMemberPath);
+
+                foreach (var item in (IEnumerable)newValue) {
+                    if (hasDisplayMemberPath) {
+                        var type = item.GetType();
+                        var prop = type.GetRuntimeProperty(this.DisplayMemberPath);
+                        this.Items.Add(prop.GetValue(item).ToString());
+                    } else {
+                        this.Items.Add(item.ToString());
+                    }
+                }
+
+                this.SelectedIndex = -1;
+                this._disableNestedCalls = false;
+
+                if (this.SelectedItem != null) {
+                    this.InternalSelectedItemChanged();
+                } else if (hasDisplayMemberPath && this.SelectedValue != null) {
+                    this.InternalSelectedValueChanged();
+                }
+            } else {
+                _disableNestedCalls = true;
+                this.SelectedIndex = -1;
+                this.SelectedItem = null;
+                this.SelectedValue = null;
+                _disableNestedCalls = false;
+            }
+        }
 
         void InternalSelectedItemChanged() {
             if (_disableNestedCalls) {
@@ -106,7 +144,7 @@
                     if (item != null) {
                         var type = item.GetType();
                         var prop = type.GetRuntimeProperty(this.SelectedValuePath);
-                        if (prop.GetValue(item) == this.SelectedValue) {
+                        if (Object.Equals(prop.GetValue(item), this.SelectedValue)) {
                             selectedIndex = index;
                             selectedItem = item;
                             break;
@@ -122,43 +160,51 @@
             _disableNestedCalls = false;
         }
 
+        void ItemsSource_CollectionChanged(Object sender, NotifyCollectionChangedEventArgs e) {
+            var hasDisplayMemberPath = !String.IsNullOrWhiteSpace(this.DisplayMemberPath);
+            if (e.Action == NotifyCollectionChangedAction.Add) {
+                foreach (var item in e.NewItems) {
+                    if (hasDisplayMemberPath) {
+                        var type = item.GetType();
+                        var prop = type.GetRuntimeProperty(this.DisplayMemberPath);
+                        this.Items.Add(prop.GetValue(item).ToString());
+                    } else {
+                        this.Items.Add(item.ToString());
+                    }
+                }
+            } else if (e.Action == NotifyCollectionChangedAction.Remove) {
+                foreach (var item in e.NewItems) {
+                    if (hasDisplayMemberPath) {
+                        var type = item.GetType();
+                        var prop = type.GetRuntimeProperty(this.DisplayMemberPath);
+                        this.Items.Remove(prop.GetValue(item).ToString());
+                    } else {
+                        this.Items.Remove(item.ToString());
+                    }
+                }
+            } else if (e.Action == NotifyCollectionChangedAction.Replace) {
+                foreach (var item in e.NewItems) {
+                    if (hasDisplayMemberPath) {
+                        var type = item.GetType();
+                        var prop = type.GetRuntimeProperty(this.DisplayMemberPath);
+                        this.Items.Remove(prop.GetValue(item).ToString());
+                    } else {
+                        var index = this.Items.IndexOf(item.ToString());
+                        if (index > -1) {
+                            this.Items[index] = item.ToString();
+                        }
+                    }
+                }
+            }
+        }
+
         static void OnItemsSourceChanged(BindableObject bindable, Object oldValue, Object newValue) {
             if (Equals(newValue, null) && Equals(oldValue, null)) {
                 return;
             }
 
             var picker = (BindablePicker)bindable;
-            picker.Items.Clear();
-
-            if (!Equals(newValue, null)) {
-                var hasDisplayMemberPath = !String.IsNullOrWhiteSpace(picker.DisplayMemberPath);
-
-                foreach (var item in (IEnumerable)newValue) {
-                    if (hasDisplayMemberPath) {
-                        var type = item.GetType();
-                        var prop = type.GetRuntimeProperty(picker.DisplayMemberPath);
-                        picker.Items.Add(prop.GetValue(item).ToString());
-                    } else {
-                        picker.Items.Add(item.ToString());
-                    }
-                }
-
-                picker._disableNestedCalls = true;
-                picker.SelectedIndex = -1;
-                picker._disableNestedCalls = false;
-
-                if (picker.SelectedItem != null) {
-                    picker.InternalSelectedItemChanged();
-                } else if (hasDisplayMemberPath && picker.SelectedValue != null) {
-                    picker.InternalSelectedValueChanged();
-                }
-            } else {
-                picker._disableNestedCalls = true;
-                picker.SelectedIndex = -1;
-                picker.SelectedItem = null;
-                picker.SelectedValue = null;
-                picker._disableNestedCalls = false;
-            }
+            picker.InstanceOnItemsSourceChanged(oldValue, newValue);
         }
 
         void OnSelectedIndexChanged(Object sender, EventArgs e) {
