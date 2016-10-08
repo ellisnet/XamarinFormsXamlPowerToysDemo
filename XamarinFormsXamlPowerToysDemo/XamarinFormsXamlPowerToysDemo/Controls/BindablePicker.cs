@@ -195,6 +195,28 @@ namespace XamarinFormsXamlPowerToysDemo.Controls {
                         }
                     }
                 }
+            } else if (e.Action == NotifyCollectionChangedAction.Reset) {
+                this.Items.Clear();
+                if (e.NewItems != null) {
+                    foreach (var item in e.NewItems) {
+                        if (hasDisplayMemberPath) {
+                            var type = item.GetType();
+                            var prop = type.GetRuntimeProperty(this.DisplayMemberPath);
+                            this.Items.Remove(prop.GetValue(item).ToString());
+                        } else {
+                            var index = this.Items.IndexOf(item.ToString());
+                            if (index > -1) {
+                                this.Items[index] = item.ToString();
+                            }
+                        }
+                    }
+                } else {
+                    _disableNestedCalls = true;
+                    this.SelectedItem = null;
+                    this.SelectedIndex = -1;
+                    this.SelectedValue = null;
+                    _disableNestedCalls = false;
+                }
             }
         }
 
